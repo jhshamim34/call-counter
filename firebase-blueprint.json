@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "CallCounterBoard": {
+      "title": "CallCounterBoard",
+      "description": "Stores call attempt and status counts for a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "totalCallsAttempted": {
+          "type": "integer",
+          "description": "Count of Total Calls Attempted clicks."
+        },
+        "connectCall": {
+          "type": "integer",
+          "description": "Count of Connect call clicks."
+        },
+        "activeCall": {
+          "type": "integer",
+          "description": "Count of Active call clicks."
+        },
+        "followupCall": {
+          "type": "integer",
+          "description": "Count of followup call clicks."
+        },
+        "busy": {
+          "type": "integer",
+          "description": "Count of Busy clicks."
+        },
+        "switchedOff": {
+          "type": "integer",
+          "description": "Count of Switched Off clicks."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the board was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last counter update."
+        }
+      },
+      "required": [
+        "userId",
+        "totalCallsAttempted",
+        "connectCall",
+        "activeCall",
+        "followupCall",
+        "busy",
+        "switchedOff",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/callCounters/{userId}": {
+      "schema": {
+        "$ref": "#/entities/CallCounterBoard"
+      },
+      "description": "Per-user persistent call counter document."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Call Counter",
+  "description": "Black page with call status buttons and individual click counters.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

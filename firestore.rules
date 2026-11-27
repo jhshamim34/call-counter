@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidCount(val) {
+      return val is int && val >= 0 && val <= 100000000;
+    }
+
+    function isValidCallCounterBoard(data, userId) {
+      return data.keys().hasAll([
+        'userId',
+        'totalCallsAttempted',
+        'connectCall',
+        'activeCall',
+        'followupCall',
+        'busy',
+        'switchedOff',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'userId',
+        'totalCallsAttempted',
+        'connectCall',
+        'activeCall',
+        'followupCall',
+        'busy',
+        'switchedOff',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.userId is string &&
+      data.userId.size() >= 1 &&
+      data.userId.size() <= 128 &&
+      data.userId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.userId == userId &&
+      data.userId == request.auth.uid &&
+      isValidCount(data.totalCallsAttempted) &&
+      isValidCount(data.connectCall) &&
+      isValidCount(data.activeCall) &&
+      isValidCount(data.followupCall) &&
+      isValidCount(data.busy) &&
+      isValidCount(data.switchedOff) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    match /callCounters/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidCallCounterBoard(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidCallCounterBoard(incoming(), userId) && (
+          (
+            incoming().userId == existing().userId &&
+            incoming().createdAt == existing().createdAt &&
+            incoming().updatedAt == request.time &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'totalCallsAttempted',
+              'connectCall',
+              'activeCall',
+              'followupCall',
+              'busy',
+              'switchedOff',
+              'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if false;
+    }
+  }
+}
