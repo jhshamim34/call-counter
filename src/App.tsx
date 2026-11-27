@@ -32,7 +32,8 @@ type CounterField =
   | 'activeCall'
   | 'followupCall'
   | 'busy'
-  | 'switchedOff';
+  | 'switchedOff'
+  | 'callNotReceived';
 
 interface CounterConfig {
   label: string;
@@ -46,6 +47,7 @@ const COUNTER_CONFIGS: readonly CounterConfig[] = [
   { label: 'followup call', field: 'followupCall' },
   { label: 'Busy', field: 'busy' },
   { label: 'Switched Off', field: 'switchedOff' },
+  { label: 'Call Not Received', field: 'callNotReceived' },
 ] as const;
 
 type CountsState = Record<CounterField, number>;
@@ -57,6 +59,7 @@ const EMPTY_COUNTS: CountsState = {
   followupCall: 0,
   busy: 0,
   switchedOff: 0,
+  callNotReceived: 0,
 };
 
 const LOCAL_STORAGE_PREFIX = 'call_counters_v1_';
@@ -77,6 +80,7 @@ function readLocalCounts(uid: string | null): CountsState {
       followupCall: clampCount(parsed.followupCall),
       busy: clampCount(parsed.busy),
       switchedOff: clampCount(parsed.switchedOff),
+      callNotReceived: clampCount(parsed.callNotReceived),
     };
   } catch {
     return { ...EMPTY_COUNTS };
@@ -99,6 +103,7 @@ function extractCountsFromDoc(data: Record<string, unknown>): CountsState {
     followupCall: clampCount(data.followupCall),
     busy: clampCount(data.busy),
     switchedOff: clampCount(data.switchedOff),
+    callNotReceived: clampCount(data.callNotReceived),
   };
 }
 
@@ -112,6 +117,7 @@ export default function App() {
   const [fatalError, setFatalError] = useState<Error | null>(null);
 
   const remoteDocExistsRef = useRef<boolean>(false);
+  const missingCallNotReceivedRef = useRef<boolean>(false);
   const countsRef = useRef<CountsState>(counts);
 
   useEffect(() => {
@@ -124,6 +130,7 @@ export default function App() {
       setUser(nextUser);
       setAuthReady(true);
       remoteDocExistsRef.current = false;
+      missingCallNotReceivedRef.current = false;
       const localCached = readLocalCounts(nextUser ? nextUser.uid : null);
       setCounts(localCached);
     });
@@ -144,12 +151,15 @@ export default function App() {
       { includeMetadataChanges: false },
       (snapshot) => {
         if (snapshot.exists()) {
+          const rawData = snapshot.data();
           remoteDocExistsRef.current = true;
-          const nextCounts = extractCountsFromDoc(snapshot.data());
+          missingCallNotReceivedRef.current = rawData.callNotReceived === undefined;
+          const nextCounts = extractCountsFromDoc(rawData);
           setCounts(nextCounts);
           writeLocalCounts(user.uid, nextCounts);
         } else {
           remoteDocExistsRef.current = false;
+          missingCallNotReceivedRef.current = false;
         }
       },
       (error) => {
@@ -205,6 +215,7 @@ export default function App() {
       try {
         if (!remoteDocExistsRef.current) {
           remoteDocExistsRef.current = true;
+          missingCallNotReceivedRef.current = false;
           await setDoc(docRef, {
             userId: user.uid,
             totalCallsAttempted: clampCount(nextCounts.totalCallsAttempted),
@@ -213,7 +224,19 @@ export default function App() {
             followupCall: clampCount(nextCounts.followupCall),
             busy: clampCount(nextCounts.busy),
             switchedOff: clampCount(nextCounts.switchedOff),
+            callNotReceived: clampCount(nextCounts.callNotReceived),
             createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } else if (missingCallNotReceivedRef.current) {
+          missingCallNotReceivedRef.current = false;
+          await updateDoc(docRef, {
+            ...(field === 'callNotReceived'
+              ? { callNotReceived: clampCount(nextCounts.callNotReceived) }
+              : {
+                  [field]: increment(delta),
+                  callNotReceived: clampCount(nextCounts.callNotReceived),
+                }),
             updatedAt: serverTimestamp(),
           });
         } else {
@@ -248,6 +271,7 @@ export default function App() {
         try {
           if (!remoteDocExistsRef.current) {
             remoteDocExistsRef.current = true;
+            missingCallNotReceivedRef.current = false;
             await setDoc(docRef, {
               userId: user.uid,
               totalCallsAttempted: 0,
@@ -256,10 +280,12 @@ export default function App() {
               followupCall: 0,
               busy: 0,
               switchedOff: 0,
+              callNotReceived: 0,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             });
           } else {
+            missingCallNotReceivedRef.current = false;
             await updateDoc(docRef, {
               totalCallsAttempted: 0,
               connectCall: 0,
@@ -267,6 +293,7 @@ export default function App() {
               followupCall: 0,
               busy: 0,
               switchedOff: 0,
+              callNotReceived: 0,
               updatedAt: serverTimestamp(),
             });
           }
@@ -297,6 +324,7 @@ export default function App() {
           if (!existingSnap.exists()) {
             const guestCounts = readLocalCounts(null);
             remoteDocExistsRef.current = true;
+            missingCallNotReceivedRef.current = false;
             await setDoc(docRef, {
               userId: signedInUser.uid,
               totalCallsAttempted: clampCount(guestCounts.totalCallsAttempted),
@@ -305,6 +333,7 @@ export default function App() {
               followupCall: clampCount(guestCounts.followupCall),
               busy: clampCount(guestCounts.busy),
               switchedOff: clampCount(guestCounts.switchedOff),
+              callNotReceived: clampCount(guestCounts.callNotReceived),
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             });

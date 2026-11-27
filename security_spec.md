@@ -3,7 +3,7 @@
 ## 1. Data Invariants
 1. Every document in `/callCounters/{userId}` belongs strictly to a single verified user (`request.auth.uid == userId` and `request.auth.token.email_verified == true`).
 2. Document IDs `{userId}` must match `^[a-zA-Z0-9_\-]+$` and stay within 1–128 characters.
-3. All six counter fields (`totalCallsAttempted`, `connectCall`, `activeCall`, `followupCall`, `busy`, `switchedOff`) must be non-negative integers bounded between `0` and `100000000`.
+3. All seven counter fields (`totalCallsAttempted`, `connectCall`, `activeCall`, `followupCall`, `busy`, `switchedOff`, `callNotReceived`) must be non-negative integers bounded between `0` and `100000000`.
 4. `userId` and `createdAt` are immutable after document creation.
 5. `createdAt` on create and `updatedAt` on create/update must equal `request.time`.
 6. Collection listing (`list`) and document deletion (`delete`) are explicitly denied.

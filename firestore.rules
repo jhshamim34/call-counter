@@ -43,6 +43,7 @@ service cloud.firestore {
         'followupCall',
         'busy',
         'switchedOff',
+        'callNotReceived',
         'createdAt',
         'updatedAt'
       ]) &&
@@ -54,6 +55,7 @@ service cloud.firestore {
         'followupCall',
         'busy',
         'switchedOff',
+        'callNotReceived',
         'createdAt',
         'updatedAt'
       ]) &&
@@ -69,6 +71,7 @@ service cloud.firestore {
       isValidCount(data.followupCall) &&
       isValidCount(data.busy) &&
       isValidCount(data.switchedOff) &&
+      isValidCount(data.callNotReceived) &&
       data.createdAt is timestamp &&
       data.updatedAt is timestamp;
     }
@@ -99,6 +102,7 @@ service cloud.firestore {
               'followupCall',
               'busy',
               'switchedOff',
+              'callNotReceived',
               'updatedAt'
             ])
           )
